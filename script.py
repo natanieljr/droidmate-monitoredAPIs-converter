@@ -185,6 +185,30 @@ def __create_code_tag(api):
     return dynamic_tag
 
 
+def __get_default__return(api):
+    if api.return_class == "byte":
+        return "0"
+    elif api.return_class == "char":
+        return "'A'"
+    elif api.return_class == "double":
+        return "0"
+    elif api.return_class == "float":
+        return "0"
+    elif api.return_class == "int":
+        return "0"
+    elif api.return_class == "long":
+        return "0"
+    elif api.return_class == "short":
+        return "0"
+    elif api.return_class == "boolean":
+        return "false"
+    elif api.return_class == "void":
+        return ""
+    #for objects
+    else:
+        return "null"
+
+
 def __process_non_comment(seq, line):
     # only API 23 reach this point
     jni_signatue = line.replace("!API19 ", "")
@@ -201,6 +225,8 @@ def __process_non_comment(seq, line):
     ctor_tag = "<name>%s</name>" % __create_name_id(api, seq)
     code_tag = __create_code_tag(api)
 
+    default_return_tag = "<defaultValue>%s</defaultValue>" % __get_default__return(api)
+
     log_signature_tag = "<logId>%s</logId>" % __create_log_signature(api)
 
     dst_line = """
@@ -211,12 +237,14 @@ def __process_non_comment(seq, line):
 %s <!-- METHOD ID -->
 %s <!-- LOG SIGNATURE -->
 %s <!-- INVOKE_CODE -->
+%s <!-- DEFAULT RETURN -->
 </apiPolicy>""" % (api_tag,
                    policty_tag,
                    hook_tag,
                    ctor_tag,
                    log_signature_tag,
-                   code_tag)
+                   code_tag,
+                   default_return_tag)
 
     return dst_line
 
