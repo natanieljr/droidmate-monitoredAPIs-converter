@@ -1,6 +1,7 @@
 import os
 import string
 import sys
+import json
 
 from logger import Logger
 import api_converter
@@ -11,7 +12,7 @@ __usage_string = """
 
 Where:
     SRC: path to a text file containing list of APIs in JNI format
-    DST: path where the output XML will be created (with file name)
+    DST: path where the output JSON file will be created (with file name)
 """
 
 
@@ -21,49 +22,17 @@ def __ignore_line(line):
            (line == "# ------")
 
 
-def __process_comment(line, prev_line, next_line):
-    if prev_line.startswith("#"):
-        start = ""
-    else:
-        start = "<!--"
+def __create_api_dict(api):
+    api_dict = {"className":        api.object_class,
+                "methodName":       api.method_name,
+                "paramList":        api.params_list,
+                "returnType":       api.return_class,
+                "isStatic":         api.is_static,
+                "jniSignature":     api.jni_signature,
+                "platformVersion":  "All",
+                }
 
-    if next_line.startswith("#"):
-        end = ""
-    else:
-        end = "-->"
-    return '%s %s %s' % (start, line.replace('#', ''), end)
-
-
-def __to_valid_xml_name(name):
-    return name.replace("<", "&lt;").replace(">", "&gt;")
-
-
-def __create_api_tag(api):
-    class_name = "<class>%s</class>" % api.object_class
-    method_name = "<method>%s</method>" % __to_valid_xml_name(api.method_name)
-    method_params = "<params>\n"
-
-    for param in api.params_list:
-        method_params += "\t\t\t<param>%s</param>\n" % param
-
-    method_params += "\t\t</params>"
-    return_type = "<return>%s</return>" % api.return_class
-    is_static = "<static>%s</static>" % api.is_static
-    jni = "<jni>%s</jni>" % __to_valid_xml_name(api.jni_signature)
-    version = "<version>All</version>"
-
-    api_tag = """
-        <api>
-           %s
-           %s
-           %s
-           %s
-           %s
-           %s
-           %s
-        </api>""" % (class_name, method_name, method_params, return_type, is_static, jni, version)
-
-    return api_tag
+    return api_dict
 
 
 def __create_signature_params(params_list):
@@ -127,6 +96,7 @@ def __create_dynamic_part(api):
         $ASTATEMENT OriginalMethod.by(new $DOLAR() {}).$INVOKE ($PARAMS_INVOKE);
         $RSTATEMENT $RETURN_CAST monitorHook.hookAfterApiCall(logSignature, $RETURN_CAST $RETURN_VAR);
     """)
+
     dynamic_part = dynamic_template.substitute(
         {"RSTATEMENT": return_statement,
          "PARAMS_INVOKE": invoke_params,
@@ -144,7 +114,7 @@ def __create_name_id(api, seq):
     if "<" in api.method_name:
         name_method_name = "_ctor"
     else:
-        name_method_name = __to_valid_xml_name(api.method_name)
+        name_method_name = api.method_name
 
     name_object_class = api.object_class.replace(".", "_")
     name_method_name = name_method_name.replace(".", "_")
@@ -170,7 +140,7 @@ def __create_log_signature(api):
         """ "TId: "+threadId+" objCls: $CLASS mthd: $METHOD retCls: $RETURN params: $PARAMS stacktrace: "+stackTrace""")
     sign = sign_template.substitute({
         "CLASS": api.object_class,
-        "METHOD": __to_valid_xml_name(api.method_name),
+        "METHOD": api.method_name,
         "RETURN": api.return_class,
         "PARAMS": log_params
     })
@@ -178,11 +148,14 @@ def __create_log_signature(api):
     return sign
 
 
-def __create_code_tag(api):
+def __create_code_dict(api):
     dynamic_part = __create_dynamic_part(api)
-    dynamic_tag = "<invoke>\n%s\n</invoke>" % dynamic_part
 
-    return dynamic_tag
+    return {"invokeAPICode": dynamic_part,
+            "defaultReturnValue": __get_default__return(api),
+            "logID": __create_log_signature(api),
+            "customPolicyConstraint": ""
+            }
 
 
 def __get_default__return(api):
@@ -215,42 +188,24 @@ def __process_non_comment(seq, line):
     # print(jni_signatue)
 
     api = api_converter.from_descriptor(jni_signatue)
-    api_tag = __create_api_tag(api)
+    api_dict = __create_api_dict(api)
+    code_dict = __create_code_dict(api)
 
-    policty_tag = "<policy>Allow</policy>"
+    other_dict = {"policy": "Allow",
+                  "hookedMethod": "%s->%s" % (api.object_class, api.method_name),
+                  "signature": __create_name_id(api, seq)
+                  }
 
-    hook_id = "%s->%s" % (api.object_class, __to_valid_xml_name(api.method_name))
-    hook_tag = "<hook>%s</hook>" % hook_id
+    dst_dict = {}
+    dst_dict.update(api_dict)
+    dst_dict.update(code_dict)
+    dst_dict.update(other_dict)
 
-    ctor_tag = "<name>%s</name>" % __create_name_id(api, seq)
-    code_tag = __create_code_tag(api)
-
-    default_return_tag = "<defaultValue>%s</defaultValue>" % __get_default__return(api)
-
-    log_signature_tag = "<logId>%s</logId>" % __create_log_signature(api)
-
-    dst_line = """
-<apiPolicy>
-%s <!-- API -->
-%s <!-- POLICY -->
-%s <!-- HOOK ID -->
-%s <!-- METHOD ID -->
-%s <!-- LOG SIGNATURE -->
-%s <!-- INVOKE_CODE -->
-%s <!-- DEFAULT RETURN -->
-</apiPolicy>""" % (api_tag,
-                   policty_tag,
-                   hook_tag,
-                   ctor_tag,
-                   log_signature_tag,
-                   code_tag,
-                   default_return_tag)
-
-    return dst_line
+    return dst_dict
 
 
 def process_file(src, dst):
-    data = ['<?xml version="1.0"?>', "<policies_list>"]
+    data = []
 
     f = open(src, 'r')
     src_data = f.readlines()
@@ -273,22 +228,17 @@ def process_file(src, dst):
         if __ignore_line(src_line):
             continue
 
-        # Just comment
-        if src_line.startswith('#'):
-            dst_line = __process_comment(src_line, prev_line, next_line)
-        # Valid API, create config
-        else:
-            dst_line = __process_non_comment(seq, src_line)
+        # Ignored comments, Valid APIs, create config
+        if not src_line.startswith('#'):
+            dst_dict = __process_non_comment(seq, src_line)
+            data.append(dst_dict)
 
-        data.append(dst_line)
+    new_api_file = {"apis" : data}
 
-    data.append("</policies_list>")
+    json.dumps(new_api_file)
 
     f = open(dst, 'w')
-
-    for l in data:
-        f.write("%s\n" % l)
-
+    json.dump(new_api_file, f)
     f.close()
 
     return data
@@ -298,6 +248,10 @@ def __invalid_params():
     return len(sys.argv) < 2 or \
            not os.path.exists(sys.argv[1])
 
+
+class JSONObject:
+    def __init__(self, d):
+        self.__dict__ = d
 
 if __name__ == "__main__":
     if __invalid_params():
@@ -319,3 +273,9 @@ if __name__ == "__main__":
         process_file(src_file, dst_file)
 
         logger.info("Done")
+
+        fx = open(dst_file, 'r')
+        data = json.load(fx, object_hook=JSONObject)
+        fx.close()
+
+        print(len(data.apis))
