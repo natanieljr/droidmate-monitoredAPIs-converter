@@ -269,13 +269,7 @@ if __name__ == "__main__":
         logger.info("Destination file: %s", dst_file)
 
         # Create second copy of the file in the local directory for easier cehcking
-        dst_file = os.path.join(".", 'monitored_apis.xml')
+        dst_file = os.path.join(".", 'monitored_apis.json')
         process_file(src_file, dst_file)
 
         logger.info("Done")
-
-        fx = open(dst_file, 'r')
-        data = json.load(fx, object_hook=JSONObject)
-        fx.close()
-
-        print(len(data.apis))
