@@ -146,4 +146,6 @@ def from_descriptor(descriptor):
     api.is_static = is_static
     api.jni_signature = descriptor
 
+    #print "%s->%s(%s)" % (object_class, method_name, str(params_list).replace("[", "").replace("]", "").replace("'", "").replace(" ", ""))
+
     return api
