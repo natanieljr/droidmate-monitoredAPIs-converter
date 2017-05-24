@@ -153,8 +153,7 @@ def __create_code_dict(api):
 
     return {"invokeAPICode": dynamic_part,
             "defaultReturnValue": __get_default__return(api),
-            "logID": __create_log_signature(api),
-            "customPolicyConstraint": ""
+            "logID": __create_log_signature(api)
             }
 
 
@@ -177,6 +176,9 @@ def __get_default__return(api):
         return "false"
     elif api.return_class == "void":
         return ""
+    # handle string differently
+    elif api.return_class == "java.lang.String":
+        return '""'
     #for objects
     else:
         return "null"
@@ -191,8 +193,7 @@ def __process_non_comment(seq, line):
     api_dict = __create_api_dict(api)
     code_dict = __create_code_dict(api)
 
-    other_dict = {"policy": "Allow",
-                  "hookedMethod": "%s->%s" % (api.object_class, api.method_name),
+    other_dict = {"hookedMethod": "%s->%s" % (api.object_class, api.method_name),
                   "signature": __create_name_id(api, seq)
                   }
 
