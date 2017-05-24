@@ -3,4 +3,3 @@ __pycache__/
 
 .idea
 api_converter_script.log
-monitored_apis.xml
