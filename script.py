@@ -194,7 +194,8 @@ def __process_non_comment(seq, line):
     code_dict = __create_code_dict(api)
 
     other_dict = {"hookedMethod": "%s->%s" % (api.object_class, api.method_name),
-                  "signature": __create_name_id(api, seq)
+                  "signature": __create_name_id(api, seq),
+                  "exceptionType": "SecurityException"
                   }
 
     dst_dict = {}
