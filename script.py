@@ -161,11 +161,11 @@ def __create_log_signature(api):
     log_params = __create_log_params(signature_params)
 
     sign_template = string.Template(
-        """ "TId: "+threadId+"; objCls: $CLASS; mthd: $METHOD; retCls: $RETURN; params: $PARAMS; stacktrace: "+stackTrace""")
+        """ "TId: "+threadId+";objCls: $CLASS;mthd: $METHOD;retCls: $RETURN;params: $PARAMS;stacktrace: \\""+stackTrace+"\\""  """)
     sign = sign_template.substitute({
-        "CLASS": api.object_class,
-        "METHOD": api.method_name,
-        "RETURN": api.return_class,
+        "CLASS": '\\"%s\\"' % api.object_class,
+        "METHOD": '\\"%s\\"' % api.method_name,
+        "RETURN": '\\"%s\\"' % api.return_class,
         "PARAMS": log_params
     })
 
