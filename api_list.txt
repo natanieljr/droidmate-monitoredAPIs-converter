@@ -586,5 +586,5 @@ Landroid/content/ContentProviderClient;->openTypedAssetFileDescriptor(Landroid/n
 Landroid/content/ContentProviderClient;->query(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;Landroid/os/CancellationSignal;)Landroid/database/Cursor;
 
 # ========================================
-# End of CONTENT PROVIDER APIs
+# End of CONTENT PROVIDER APIs 
 # ========================================

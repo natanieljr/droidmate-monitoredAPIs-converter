@@ -76,6 +76,9 @@ def __jni_to_source_code(type, replace_dollars_with_dots=False):
 
         out += type_prim
     else:
+        if type_prim.endswith(";"):
+            type_prim = type_prim[:-1]
+
         assert len(type_prim) == 1
         base_type = filter(lambda x: __base_to_source_type_map.has_key(x), type_prim)
         assert len(base_type) > 0
@@ -107,6 +110,7 @@ def __match_class_field_descriptors(class_field_descriptors):
 
 
 def from_descriptor(descriptor):
+    #print(descriptor)
     object_class = descriptor.split("->")[0]
     object_class = __jni_to_source_code(object_class)  # e.g. android.content.ContentProviderClient
 
@@ -146,6 +150,6 @@ def from_descriptor(descriptor):
     api.is_static = is_static
     api.jni_signature = descriptor
 
-    #print "%s->%s(%s)" % (object_class, method_name, str(params_list).replace("[", "").replace("]", "").replace("'", "").replace(" ", ""))
+    print "%s->%s(%s)" % (object_class, method_name, str(params_list).replace("[", "").replace("]", "").replace("'", "").replace(" ", ""))
 
     return api

@@ -48,17 +48,41 @@ def __create_signature_params(params_list):
 
 
 def __create_log_params(signature_params):
-    # java.lang.String "+convert(p0)+" boolean "+convert(p1)+" boolean "+convert(p2)+" boolean "+convert(p3)+"
-    params_log = signature_params \
-        .replace(", ", ')+"') \
-        .replace(" ", '"+convert(') \
-        .replace('"+', ' "+') \
-        .replace('+"', '+" ')
+    """
 
-    if len(params_log) > 0:
-        params_log += ')+"'
+    params: java.lang.String "0" java.lang.Object[] "[public native java.lang.String java.lang.String.concat(java.lang.String)]";stacktrace: "dalvik.system.VMStack.getThreadStackTrace(Native Method)->java.lang.Thread.getStackTrace(Thread.java:1566)->de.upb.testify.runtime.UtilityClass.getStackTrace(UtilityClass.java)->de.upb.testify.runtime.UtilityClass.loggingPoint(UtilityClass.java)->de.upb.testApps.dynamicButton.MainActivity$1.onClick(MainActivity.java)->android.view.View.performClick(View.java:5637)->android.view.View$PerformClick.run(View.java:22429)->android.os.Handler.handleCallback(Handler.java:751)->android.os.Handler.dispatchMessage(Handler.java:95)->android.os.Looper.loop(Looper.java:154)->android.app.ActivityThread.main(ActivityThread.java:6121)->java.lang.reflect.Method.invoke(Native Method)->com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:889)->com.android.internal.os.ZygoteInit.main(ZygoteInit.java:779)"
 
-    return params_log
+    """
+
+    # java.lang.String \""+convert(p0)+"\" boolean "+convert(p1)+" boolean "+convert(p2)+" boolean "+convert(p3)+"
+
+    params_data = [x.strip() for x in signature_params.split(",")]
+
+    out = ""
+
+    for item in params_data:
+        if item == "":
+            continue
+
+        paramType = item.split(' ')[0]
+        paramName = '+objectToString(' + item.split(' ')[1] + ')+'
+
+        out += '%s \\"" %s "\\" ' % (paramType, paramName)
+
+    #print(out)
+
+    return out
+
+    #params_log = signature_params \
+    #    .replace(", ", ')+"') \
+    #    .replace(" ", '"+convert(') \
+    #    .replace('"+', ' "+') \
+    #    .replace('+"', '+" ')
+    #
+    #if len(params_log) > 0:
+    #    params_log += ')+"'
+    #
+    #return params_log
 
 
 def __create_invoke_params(params_list):
@@ -137,7 +161,7 @@ def __create_log_signature(api):
     log_params = __create_log_params(signature_params)
 
     sign_template = string.Template(
-        """ "TId: "+threadId+" objCls: $CLASS mthd: $METHOD retCls: $RETURN params: $PARAMS stacktrace: "+stackTrace""")
+        """ "TId: "+threadId+"; objCls: $CLASS; mthd: $METHOD; retCls: $RETURN; params: $PARAMS; stacktrace: "+stackTrace""")
     sign = sign_template.substitute({
         "CLASS": api.object_class,
         "METHOD": api.method_name,
@@ -237,10 +261,10 @@ def process_file(src, dst):
 
     new_api_file = {"apis" : data}
 
-    json.dumps(new_api_file)
+    json.dumps(new_api_file, sort_keys=True, indent=4)
 
     f = open(dst, 'w')
-    json.dump(new_api_file, f)
+    json.dump(new_api_file, f, sort_keys=True, indent=4)
     f.close()
 
     return data
